@@ -1,0 +1,76 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: An AWS Serverless Specification template for aws_sam_intro project
+Resources:
+  SrcBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: sam-intro-bck
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+  SNSTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: "Sam-Intro-Topic"
+  SNSSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Endpoint: jaya.aiyappan@gmail.com
+      Protocol: email
+      TopicArn: !Ref 'SNSTopic'
+  LambdaRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Policies:
+        - PolicyName: SAM_INTRO_Lambda_Permission_CWLogs
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: 'logs:*'
+                Resource: '*'
+        - PolicyName: SAM_INTRO_Lambda_Permission_SNS
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: 'sns:Publish'
+                Resource: 'arn:aws:sns:ap-south-1:xxxxxxxxxx:Sam-Intro-Topic'
+        - PolicyName: SAM_INTRO_Lambda_Permission_S3
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: ['s3:*', 's3-object-lambda:*']
+                Resource: '*'
+  LambdaSamIntroFn:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      FunctionName: sam_intro_fn
+      Handler: publishtosns.lambda_handler
+      Runtime: python3.9
+      CodeUri: .
+      Description: ''
+      MemorySize: 128
+      Timeout: 3
+      Role: !GetAtt LambdaRole.Arn
+      Events:
+        BucketEvent1:
+          Type: S3
+          Properties:
+            Bucket:
+              Ref: SrcBucket
+            Events:
+              - 's3:ObjectCreated:*'
